@@ -324,7 +324,7 @@
                 const payment = row.payment.toLowerCase();
                 if (payment === 'наличными') { cashBottles += bottles; }
                 else if (payment === 'payme' || payment === 'click') { onlineBottles += bottles; }
-                else if (payment === 'перечисление') { transferBottles += bottles; }
+                else if (payment === 'перечисление' || payment === 'перечислением') { transferBottles += bottles; }
                 else if (payment === 'бонус') { bonusBottles += bottles; }
                 else if (payment === 'бесплатно') { freeBottles += bottles; }
             });
