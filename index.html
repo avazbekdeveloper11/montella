@@ -309,34 +309,28 @@
         }
 
         function generateSummaryText(data) {
-            let cashCount = 0, cashSum = 0, cashBottles = 0;
-            let onlineCount = 0, onlineSum = 0, onlineBottles = 0;
-            let bonusCount = 0, bonusSum = 0, bonusBottles = 0;
-            let freeCount = 0, freeSum = 0, freeBottles = 0;
-            let laterCount = 0, laterSum = 0, laterBottles = 0;
-            let deliveredCount = 0, approvedCount = 0;
-            let totalSum = 0, totalBottles = 0;
+            let cashBottles = 0;
+            let onlineBottles = 0;
+            let transferBottles = 0;
+            let bonusBottles = 0;
+            let freeBottles = 0;
+            let totalBottles = 0;
 
             data.forEach(row => {
-                const total = parseInt(row.total) || 0;
-                totalSum += total;
                 const match = row.products.match(/(\d+)\s*x/);
                 const bottles = match ? parseInt(match[1]) : 0;
                 totalBottles += bottles;
 
                 const payment = row.payment.toLowerCase();
-                if (payment === 'наличными') { cashCount++; cashSum += total; cashBottles += bottles; }
-                else if (payment === 'payme' || payment === 'click' || payment === 'перечисление') { onlineCount++; onlineSum += total; onlineBottles += bottles; }
-                else if (payment === 'бонус') { bonusCount++; bonusSum += total; bonusBottles += bottles; }
-                else if (payment === 'бесплатно') { freeCount++; freeSum += total; freeBottles += bottles; }
-                else if (payment === 'позже') { laterCount++; laterSum += total; laterBottles += bottles; }
-
-                if (row.status === 'Доставлен') deliveredCount++;
-                else if (row.status === 'Одобрен') approvedCount++;
+                if (payment === 'наличными') { cashBottles += bottles; }
+                else if (payment === 'payme' || payment === 'click') { onlineBottles += bottles; }
+                else if (payment === 'перечисление') { transferBottles += bottles; }
+                else if (payment === 'бонус') { bonusBottles += bottles; }
+                else if (payment === 'бесплатно') { freeBottles += bottles; }
             });
 
             // Save stats for date change
-            summaryStats = { totalBottles, cashBottles, onlineBottles, freeBottles, bonusBottles, laterBottles };
+            summaryStats = { totalBottles, cashBottles, onlineBottles, transferBottles, freeBottles, bonusBottles };
 
             // Get date from first order or use today
             let dateStr = '';
@@ -358,9 +352,9 @@
 заказ ${totalBottles} дона сув
 нахт ${cashBottles} дона сув`;
             if (onlineBottles > 0) summaryText += `\nонлайн ${onlineBottles} дона сув`;
+            if (transferBottles > 0) summaryText += `\nперечисление ${transferBottles} дона сув`;
             if (freeBottles > 0) summaryText += `\nбесплатно ${freeBottles} дона сув`;
             if (bonusBottles > 0) summaryText += `\nбонус ${bonusBottles} дона сув`;
-            if (laterBottles > 0) summaryText += `\nпозже ${laterBottles} дона сув`;
 
             document.getElementById('summaryText').textContent = summaryText;
         }
@@ -396,9 +390,9 @@
 заказ ${summaryStats.totalBottles} дона сув
 нахт ${summaryStats.cashBottles} дона сув`;
             if (summaryStats.onlineBottles > 0) text += `\nонлайн ${summaryStats.onlineBottles} дона сув`;
+            if (summaryStats.transferBottles > 0) text += `\nперечисление ${summaryStats.transferBottles} дона сув`;
             if (summaryStats.freeBottles > 0) text += `\nбесплатно ${summaryStats.freeBottles} дона сув`;
             if (summaryStats.bonusBottles > 0) text += `\nбонус ${summaryStats.bonusBottles} дона сув`;
-            if (summaryStats.laterBottles > 0) text += `\nпозже ${summaryStats.laterBottles} дона сув`;
 
             document.getElementById('summaryText').textContent = text;
         }
