@@ -310,8 +310,10 @@
 
         function generateSummaryText(data) {
             let cashCount = 0, cashSum = 0, cashBottles = 0;
+            let onlineCount = 0, onlineSum = 0, onlineBottles = 0;
             let bonusCount = 0, bonusSum = 0, bonusBottles = 0;
             let freeCount = 0, freeSum = 0, freeBottles = 0;
+            let laterCount = 0, laterSum = 0, laterBottles = 0;
             let deliveredCount = 0, approvedCount = 0;
             let totalSum = 0, totalBottles = 0;
 
@@ -322,16 +324,19 @@
                 const bottles = match ? parseInt(match[1]) : 0;
                 totalBottles += bottles;
 
-                if (row.payment === 'Наличными') { cashCount++; cashSum += total; cashBottles += bottles; }
-                else if (row.payment === 'Бонус') { bonusCount++; bonusSum += total; bonusBottles += bottles; }
-                else if (row.payment === 'Бесплатно') { freeCount++; freeSum += total; freeBottles += bottles; }
+                const payment = row.payment.toLowerCase();
+                if (payment === 'наличными') { cashCount++; cashSum += total; cashBottles += bottles; }
+                else if (payment === 'payme' || payment === 'click' || payment === 'перечисление') { onlineCount++; onlineSum += total; onlineBottles += bottles; }
+                else if (payment === 'бонус') { bonusCount++; bonusSum += total; bonusBottles += bottles; }
+                else if (payment === 'бесплатно') { freeCount++; freeSum += total; freeBottles += bottles; }
+                else if (payment === 'позже') { laterCount++; laterSum += total; laterBottles += bottles; }
 
                 if (row.status === 'Доставлен') deliveredCount++;
                 else if (row.status === 'Одобрен') approvedCount++;
             });
 
             // Save stats for date change
-            summaryStats = { totalBottles, cashBottles, freeBottles, bonusBottles };
+            summaryStats = { totalBottles, cashBottles, onlineBottles, freeBottles, bonusBottles, laterBottles };
 
             // Get date from first order or use today
             let dateStr = '';
@@ -349,11 +354,13 @@
                 document.getElementById('reportDate').valueAsDate = now;
             }
 
-            const summaryText = `${dateStr}
+            let summaryText = `${dateStr}
 заказ ${totalBottles} дона сув
-нахт ${cashBottles} дона сув
-бесплатно ${freeBottles} дона сув
-бонус ${bonusBottles} дона сув`;
+нахт ${cashBottles} дона сув`;
+            if (onlineBottles > 0) summaryText += `\nонлайн ${onlineBottles} дона сув`;
+            if (freeBottles > 0) summaryText += `\nбесплатно ${freeBottles} дона сув`;
+            if (bonusBottles > 0) summaryText += `\nбонус ${bonusBottles} дона сув`;
+            if (laterBottles > 0) summaryText += `\nпозже ${laterBottles} дона сув`;
 
             document.getElementById('summaryText').textContent = summaryText;
         }
@@ -385,11 +392,13 @@
             const [year, month, day] = dateInput.split('-');
             const dateStr = `${day}.${month}.${year}`;
 
-            const text = `${dateStr}
+            let text = `${dateStr}
 заказ ${summaryStats.totalBottles} дона сув
-нахт ${summaryStats.cashBottles} дона сув
-бесплатно ${summaryStats.freeBottles} дона сув
-бонус ${summaryStats.bonusBottles} дона сув`;
+нахт ${summaryStats.cashBottles} дона сув`;
+            if (summaryStats.onlineBottles > 0) text += `\nонлайн ${summaryStats.onlineBottles} дона сув`;
+            if (summaryStats.freeBottles > 0) text += `\nбесплатно ${summaryStats.freeBottles} дона сув`;
+            if (summaryStats.bonusBottles > 0) text += `\nбонус ${summaryStats.bonusBottles} дона сув`;
+            if (summaryStats.laterBottles > 0) text += `\nпозже ${summaryStats.laterBottles} дона сув`;
 
             document.getElementById('summaryText').textContent = text;
         }
