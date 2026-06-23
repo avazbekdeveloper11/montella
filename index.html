@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Montella - Экспорт заказов в Excel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        .header p { font-size: 1.1rem; opacity: 0.9; }
+        .main-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+        .input-section { margin-bottom: 20px; }
+        .input-section label { display: block; font-weight: 600; color: #333; margin-bottom: 10px; font-size: 1.1rem; }
+        textarea {
+            width: 100%;
+            height: 250px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+        textarea:focus { outline: none; border-color: #667eea; }
+        .button-group { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
+        .btn {
+            padding: 14px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4); }
+        .btn-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(17, 153, 142, 0.4); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        .preview-section { margin-top: 30px; display: none; }
+        .preview-section.active { display: block; }
+        .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .preview-header h3 { color: #333; font-size: 1.3rem; }
+        .stats { display: flex; gap: 15px; flex-wrap: wrap; }
+        .stat-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .table-wrapper { overflow-x: auto; border-radius: 10px; border: 1px solid #e0e0e0; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        td { padding: 8px; border-bottom: 1px solid #e0e0e0; }
+        tr:hover { background-color: #f8f9fa; }
+        tr:nth-child(even) { background-color: #f8f9ff; }
+        .status-delivered { background: #d4edda; color: #155724; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .status-approved { background: #fff3cd; color: #856404; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .payment-cash { color: #28a745; font-weight: 600; }
+        .payment-bonus { color: #17a2b8; font-weight: 600; }
+        .payment-free { color: #6c757d; font-weight: 600; }
+        .instructions {
+            background: #e8f4fd;
+            border-left: 4px solid #667eea;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 20px;
+        }
+        .instructions h4 { color: #333; margin-bottom: 8px; }
+        .instructions p { color: #666; font-size: 14px; line-height: 1.6; }
+        .totals-row { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: white !important; font-weight: bold; }
+        .totals-row td { border-bottom: none; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MONTELLA</h1>
+            <p>Конвертер заказов доставки воды в Excel</p>
+        </div>
+        <div class="main-card">
+            <div class="instructions">
+                <h4>Инструкция:</h4>
+                <p>1. Скопируйте таблицу заказов и вставьте в поле ниже<br>
+                   2. Нажмите "Обработать данные"<br>
+                   3. Нажмите "Скачать Excel"</p>
+            </div>
+            <div class="input-section">
+                <label>Вставьте данные таблицы:</label>
+                <textarea id="inputData" placeholder="Вставьте сюда данные..."></textarea>
+            </div>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="processData()">Обработать данные</button>
+                <button class="btn btn-success" onclick="exportToExcel()" id="exportBtn" disabled>Скачать Excel</button>
+                <button class="btn btn-secondary" onclick="clearAll()">Очистить</button>
+            </div>
+            <div class="preview-section" id="previewSection">
+                <div class="preview-header">
+                    <h3>Предпросмотр:</h3>
+                    <div class="stats">
+                        <div class="stat-item">Заказов: <span id="orderCount">0</span></div>
+                        <div class="stat-item">Бутылок: <span id="bottleCount">0</span></div>
+                        <div class="stat-item">Итого: <span id="totalSum">0</span> сум</div>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table id="previewTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>ID</th>
+                                <th>Имя</th>
+                                <th>ИНН</th>
+                                <th>Номер</th>
+                                <th>Дата</th>
+                                <th>Адрес</th>
+                                <th>Товары</th>
+                                <th>Оплата</th>
+                                <th>Итого</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let parsedData = [];
+
+        function processData() {
+            const input = document.getElementById('inputData').value.trim();
+            if (!input) {
+                alert('Пожалуйста, вставьте данные!');
+                return;
+            }
+            parsedData = parseTableData(input);
+            if (parsedData.length === 0) {
+                alert('Не удалось распознать данные. Проверьте формат.');
+                return;
+            }
+            displayPreview(parsedData);
+            document.getElementById('exportBtn').disabled = false;
+        }
+
+        function parseTableData(text) {
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+            const data = [];
+
+            // Skip header lines
+            let startIdx = 0;
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i] === '#' || lines[i] === 'ID' || lines[i] === 'Имя' || lines[i] === 'ИНН' ||
+                    lines[i] === 'Номер' || lines[i] === 'Дата поставки' || lines[i] === 'Адрес' ||
+                    lines[i] === 'Товары' || lines[i] === 'Способ оплаты' || lines[i] === 'Итого' || lines[i] === 'Статус') {
+                    startIdx = i + 1;
+                }
+            }
+
+            // Find all row numbers (they start sequences)
+            const rowStarts = [];
+            for (let i = startIdx; i < lines.length; i++) {
+                // Row number is a small integer (1-999) followed by ID line (larger number 3000+)
+                if (/^\d{1,3}$/.test(lines[i]) && i + 1 < lines.length && /^\d{4,}$/.test(lines[i + 1])) {
+                    rowStarts.push(i);
+                }
+            }
+
+            // Parse each row
+            for (let r = 0; r < rowStarts.length; r++) {
+                const start = rowStarts[r];
+                const end = r + 1 < rowStarts.length ? rowStarts[r + 1] : lines.length;
+                const rowLines = lines.slice(start, end);
+
+                // Skip "Итого:" row
+                if (rowLines.some(l => l.startsWith('Итого:'))) continue;
+
+                const row = parseRow(rowLines);
+                if (row) data.push(row);
+            }
+
+            return data;
+        }
+
+        function parseRow(lines) {
+            if (lines.length < 8) return null;
+
+            // Format:
+            // 0: rowNum
+            // 1: id
+            // 2: name
+            // 3: inn OR phone (if phone starts with 998 or is 0)
+            // 4: phone OR date
+            // 5: date OR address
+            // ...continuing: address, products, payment, total, status
+
+            let idx = 0;
+            const rowNum = lines[idx++];
+            const id = lines[idx++];
+            const name = lines[idx++];
+
+            // Check if next is INN or phone
+            let inn = '';
+            let phone = '';
+
+            const next = lines[idx];
+            if (/^998\d{9}$/.test(next)) {
+                // No INN, this is phone
+                phone = lines[idx++];
+            } else if (next === '0' && /^998\d{9}$/.test(lines[idx + 1])) {
+                // INN is 0, next is phone
+                inn = lines[idx++];
+                phone = lines[idx++];
+            } else if (/^\d{9}$/.test(next) && /^998\d{9}$/.test(lines[idx + 1])) {
+                // This is INN (9 digits), next is phone
+                inn = lines[idx++];
+                phone = lines[idx++];
+            } else if (/^998\d{9}$/.test(lines[idx + 1])) {
+                // Current might be INN with different format
+                inn = lines[idx++];
+                phone = lines[idx++];
+            } else {
+                // Just take phone
+                phone = lines[idx++];
+            }
+
+            // Date (format: dd.mm.yy)
+            let date = '';
+            if (idx < lines.length && /^\d{2}\.\d{2}\.\d{2}$/.test(lines[idx])) {
+                date = lines[idx++];
+            }
+
+            // Find products line (contains "x Вода" or "x Бутылка" etc)
+            let productsIdx = -1;
+            for (let i = idx; i < lines.length; i++) {
+                if (/^\d+\s*x\s*/.test(lines[i])) {
+                    productsIdx = i;
+                    break;
+                }
+            }
+
+            if (productsIdx === -1) return null;
+
+            // Address is between date and products
+            const address = lines.slice(idx, productsIdx).join(' ');
+            const products = lines[productsIdx];
+
+            // After products: payment, total, status
+            let payment = '';
+            let total = '';
+            let status = '';
+
+            const remaining = lines.slice(productsIdx + 1);
+            for (const line of remaining) {
+                if (line === 'Наличными' || line === 'Бонус' || line === 'Бесплатно') {
+                    payment = line;
+                } else if (/^[\d\s]+$/.test(line) && !status) {
+                    total = line.replace(/\s/g, '');
+                } else if (line === 'Доставлен' || line === 'Одобрен') {
+                    status = line;
+                }
+            }
+
+            return { rowNum, id, name, inn, phone, date, address, products, payment, total, status };
+        }
+
+        function displayPreview(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            let totalSum = 0;
+            let totalBottles = 0;
+
+            data.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                const total = parseInt(row.total) || 0;
+                totalSum += total;
+
+                const match = row.products.match(/(\d+)\s*x/);
+                if (match) totalBottles += parseInt(match[1]);
+
+                const statusClass = row.status === 'Одобрен' ? 'status-approved' : 'status-delivered';
+                let paymentClass = 'payment-cash';
+                if (row.payment === 'Бонус') paymentClass = 'payment-bonus';
+                else if (row.payment === 'Бесплатно') paymentClass = 'payment-free';
+
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${row.id}</td>
+                    <td>${row.name}</td>
+                    <td>${row.inn || '-'}</td>
+                    <td>${row.phone}</td>
+                    <td>${row.date}</td>
+                    <td>${row.address}</td>
+                    <td>${row.products}</td>
+                    <td class="${paymentClass}">${row.payment}</td>
+                    <td>${formatNumber(total)}</td>
+                    <td><span class="${statusClass}">${row.status}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Totals row
+            const totalsRow = document.createElement('tr');
+            totalsRow.className = 'totals-row';
+            totalsRow.innerHTML = `
+                <td colspan="7" style="text-align: right;">ИТОГО:</td>
+                <td>${totalBottles} шт.</td>
+                <td></td>
+                <td>${formatNumber(totalSum)}</td>
+                <td></td>
+            `;
+            tbody.appendChild(totalsRow);
+
+            document.getElementById('orderCount').textContent = data.length;
+            document.getElementById('bottleCount').textContent = totalBottles;
+            document.getElementById('totalSum').textContent = formatNumber(totalSum);
+            document.getElementById('previewSection').classList.add('active');
+        }
+
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        }
+
+        function exportToExcel() {
+            if (parsedData.length === 0) {
+                alert('Нет данных для экспорта!');
+                return;
+            }
+
+            // Count payment types and status
+            let cashCount = 0, cashSum = 0, cashBottles = 0;
+            let bonusCount = 0, bonusSum = 0, bonusBottles = 0;
+            let freeCount = 0, freeSum = 0, freeBottles = 0;
+            let deliveredCount = 0, approvedCount = 0;
+            let totalSum = 0;
+            let totalBottles = 0;
+
+            parsedData.forEach(row => {
+                const total = parseInt(row.total) || 0;
+                totalSum += total;
+                const match = row.products.match(/(\d+)\s*x/);
+                const bottles = match ? parseInt(match[1]) : 0;
+                totalBottles += bottles;
+
+                if (row.payment === 'Наличными') { cashCount++; cashSum += total; cashBottles += bottles; }
+                else if (row.payment === 'Бонус') { bonusCount++; bonusSum += total; bonusBottles += bottles; }
+                else if (row.payment === 'Бесплатно') { freeCount++; freeSum += total; freeBottles += bottles; }
+
+                if (row.status === 'Доставлен') deliveredCount++;
+                else if (row.status === 'Одобрен') approvedCount++;
+            });
+
+            // Get current date/time
+            const now = new Date();
+            const dateTimeStr = now.toLocaleString('ru-RU', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            }).replace(/[,:]/g, '-').replace(/\s/g, '_');
+
+            const formatSum = (n) => n.toLocaleString('ru-RU');
+
+            const excelData = [
+                ['═══════════════════════════════════════════════════════════════════════════════'],
+                ['                         MONTELLA - ОТЧЕТ ПО ДОСТАВКЕ ВОДЫ'],
+                ['═══════════════════════════════════════════════════════════════════════════════'],
+                [''],
+                ['📅 Дата выгрузки:', now.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' })],
+                ['🕐 Время выгрузки:', now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })],
+                [''],
+                ['═══════════════════════════════════════════════════════════════════════════════'],
+                ['                              КРАТКИЙ ИТОГ ДНЯ'],
+                ['═══════════════════════════════════════════════════════════════════════════════'],
+                [''],
+                [`За сегодняшний день было выполнено ${parsedData.length} заказов на доставку воды.`],
+                [`Всего доставлено ${totalBottles} бутылок воды объемом 18.9 литров.`],
+                [''],
+                [`💵 НАЛИЧНЫМИ: Продано ${cashCount} заказов (${cashBottles} бутылок) на сумму ${formatSum(cashSum)} сум.`],
+                [`🎁 БОНУСАМИ: Оформлено ${bonusCount} заказов (${bonusBottles} бутылок) на сумму ${formatSum(bonusSum)} сум.`],
+                [`🆓 БЕСПЛАТНО: Выдано ${freeCount} заказов (${freeBottles} бутылок) на сумму ${formatSum(freeSum)} сум.`],
+                [''],
+                [`📦 Успешно доставлено: ${deliveredCount} заказов.`],
+                [`⏳ Ожидает доставки: ${approvedCount} заказов.`],
+                [''],
+                ['─────────────────────────────────────────────────────────────────────────────────'],
+                [`✅ ОБЩАЯ ВЫРУЧКА ЗА ДЕНЬ: ${formatSum(totalSum)} сум`],
+                [`   Из них наличными получено: ${formatSum(cashSum)} сум (${totalSum > 0 ? ((cashSum/totalSum)*100).toFixed(1) : 0}%)`],
+                ['─────────────────────────────────────────────────────────────────────────────────'],
+                [''],
+                ['═══════════════════════════════════════════════════════════════════════════════'],
+                ['                         ДЕТАЛЬНАЯ ТАБЛИЦА ПО ОПЛАТЕ'],
+                ['═══════════════════════════════════════════════════════════════════════════════'],
+                [''],
+                ['Способ оплаты', 'Заказов', 'Бутылок', 'Сумма (сум)', '% от общей'],
+                ['───────────────', '────────', '────────', '─────────────', '──────────'],
+                ['💵 Наличными', cashCount, cashBottles, formatSum(cashSum), totalSum > 0 ? ((cashSum/totalSum)*100).toFixed(1) + '%' : '0%'],
+                ['🎁 Бонус', bonusCount, bonusBottles, formatSum(bonusSum), totalSum > 0 ? ((bonusSum/totalSum)*100).toFixed(1) + '%' : '0%'],
+                ['🆓 Бесплатно', freeCount, freeBottles, formatSum(freeSum), totalSum > 0 ? ((freeSum/totalSum)*100).toFixed(1) + '%' : '0%'],
+                ['───────────────', '────────', '────────', '─────────────', '──────────'],
+                ['✅ ИТОГО', parsedData.length, totalBottles, formatSum(totalSum), '100%'],
+                [''],
+                ['═══════════════════════════════════════════════════════════════'],
+                ['                      ДЕТАЛЬНЫЙ СПИСОК ЗАКАЗОВ'],
+                ['═══════════════════════════════════════════════════════════════'],
+                [''],
+                ['#', 'ID', 'Имя клиента', 'ИНН', 'Телефон', 'Дата', 'Адрес доставки', 'Товары', 'Оплата', 'Сумма', 'Статус']
+            ];
+
+            parsedData.forEach((row, index) => {
+                const total = parseInt(row.total) || 0;
+                excelData.push([
+                    index + 1, row.id, row.name, row.inn || '-', row.phone,
+                    row.date, row.address, row.products, row.payment, formatSum(total), row.status
+                ]);
+            });
+
+            excelData.push(['───', '────', '─────────────', '────', '──────────', '────', '───────────────', '────────', '────────', '──────────', '────────']);
+            excelData.push(['', '', '', '', '', '', '', 'ИТОГО:', totalBottles + ' бут.', formatSum(totalSum) + ' сум', '']);
+            excelData.push(['']);
+            excelData.push(['═══════════════════════════════════════════════════════════════']);
+            excelData.push(['                         Конец отчета']);
+            excelData.push(['═══════════════════════════════════════════════════════════════']);
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+            ws['!cols'] = [
+                { wch: 5 }, { wch: 8 }, { wch: 45 }, { wch: 12 }, { wch: 15 },
+                { wch: 12 }, { wch: 55 }, { wch: 18 }, { wch: 12 }, { wch: 14 }, { wch: 12 }
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, 'Отчет');
+            XLSX.writeFile(wb, `Montella_Отчет_${dateTimeStr}.xlsx`);
+        }
+
+        function clearAll() {
+            document.getElementById('inputData').value = '';
+            document.getElementById('tableBody').innerHTML = '';
+            document.getElementById('previewSection').classList.remove('active');
+            document.getElementById('exportBtn').disabled = true;
+            parsedData = [];
+        }
+
+        document.getElementById('inputData').addEventListener('paste', function() {
+            setTimeout(() => processData(), 100);
+        });
+    </script>
+</body>
+</html>
