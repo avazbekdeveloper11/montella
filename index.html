@@ -278,7 +278,7 @@
             }
             if (phoneIdx === -1) return null;
 
-            // INN is between name and phone (could be empty, "0", or digits)
+            // INN is between name and phone
             const inn = phoneIdx > 3 ? lines.slice(3, phoneIdx).join(' ') : '';
             const phone = lines[phoneIdx];
 
@@ -309,28 +309,6 @@
                     status = line;
                 } else if (/^[\d\s]+$/.test(line)) {
                     total = line.replace(/\s/g, '');
-                }
-            }
-
-            return { rowNum, id, name, inn, phone, date, address, products, payment, total, status };
-
-            // Address is between date and products
-            const address = lines.slice(idx, productsIdx).join(' ');
-            const products = lines[productsIdx];
-
-            // After products: payment, total, status
-            let payment = '';
-            let total = '';
-            let status = '';
-
-            const remaining = lines.slice(productsIdx + 1);
-            for (const line of remaining) {
-                if (line === 'Наличными' || line === 'Бонус' || line === 'Бесплатно') {
-                    payment = line;
-                } else if (/^[\d\s]+$/.test(line) && !status) {
-                    total = line.replace(/\s/g, '');
-                } else if (line === 'Доставлен' || line === 'Одобрен') {
-                    status = line;
                 }
             }
 
@@ -372,7 +350,6 @@
                 tbody.appendChild(tr);
             });
 
-            // Totals row
             const totalsRow = document.createElement('tr');
             totalsRow.className = 'totals-row';
             totalsRow.innerHTML = `
@@ -389,7 +366,6 @@
             document.getElementById('totalSum').textContent = formatNumber(totalSum);
             document.getElementById('previewSection').classList.add('active');
 
-            // Generate summary text
             generateSummaryText(data);
         }
 
@@ -463,13 +439,11 @@
                 return;
             }
 
-            // Count payment types and status
             let cashCount = 0, cashSum = 0, cashBottles = 0;
             let bonusCount = 0, bonusSum = 0, bonusBottles = 0;
             let freeCount = 0, freeSum = 0, freeBottles = 0;
             let deliveredCount = 0, approvedCount = 0;
-            let totalSum = 0;
-            let totalBottles = 0;
+            let totalSum = 0, totalBottles = 0;
 
             parsedData.forEach(row => {
                 const total = parseInt(row.total) || 0;
@@ -486,14 +460,13 @@
                 else if (row.status === 'Одобрен') approvedCount++;
             });
 
-            // Get current date/time
             const now = new Date();
             const dateTimeStr = now.toLocaleString('ru-RU', {
                 day: '2-digit', month: '2-digit', year: 'numeric',
                 hour: '2-digit', minute: '2-digit'
             }).replace(/[,:]/g, '-').replace(/\s/g, '_');
 
-            const formatSum = (n) => n.toLocaleString('ru-RU');
+            const fmt = (n) => n.toLocaleString('ru-RU');
 
             const excelData = [
                 ['═══════════════════════════════════════════════════════════════════════════════'],
@@ -510,16 +483,16 @@
                 [`За сегодняшний день было выполнено ${parsedData.length} заказов на доставку воды.`],
                 [`Всего доставлено ${totalBottles} бутылок воды объемом 18.9 литров.`],
                 [''],
-                [`💵 НАЛИЧНЫМИ: Продано ${cashCount} заказов (${cashBottles} бутылок) на сумму ${formatSum(cashSum)} сум.`],
-                [`🎁 БОНУСАМИ: Оформлено ${bonusCount} заказов (${bonusBottles} бутылок) на сумму ${formatSum(bonusSum)} сум.`],
-                [`🆓 БЕСПЛАТНО: Выдано ${freeCount} заказов (${freeBottles} бутылок) на сумму ${formatSum(freeSum)} сум.`],
+                [`💵 НАЛИЧНЫМИ: ${cashCount} заказов (${cashBottles} бутылок) на сумму ${fmt(cashSum)} сум.`],
+                [`🎁 БОНУСАМИ: ${bonusCount} заказов (${bonusBottles} бутылок) на сумму ${fmt(bonusSum)} сум.`],
+                [`🆓 БЕСПЛАТНО: ${freeCount} заказов (${freeBottles} бутылок) на сумму ${fmt(freeSum)} сум.`],
                 [''],
                 [`📦 Успешно доставлено: ${deliveredCount} заказов.`],
                 [`⏳ Ожидает доставки: ${approvedCount} заказов.`],
                 [''],
                 ['─────────────────────────────────────────────────────────────────────────────────'],
-                [`✅ ОБЩАЯ ВЫРУЧКА ЗА ДЕНЬ: ${formatSum(totalSum)} сум`],
-                [`   Из них наличными получено: ${formatSum(cashSum)} сум (${totalSum > 0 ? ((cashSum/totalSum)*100).toFixed(1) : 0}%)`],
+                [`✅ ОБЩАЯ ВЫРУЧКА ЗА ДЕНЬ: ${fmt(totalSum)} сум`],
+                [`   Из них наличными получено: ${fmt(cashSum)} сум (${totalSum > 0 ? ((cashSum/totalSum)*100).toFixed(1) : 0}%)`],
                 ['─────────────────────────────────────────────────────────────────────────────────'],
                 [''],
                 ['═══════════════════════════════════════════════════════════════════════════════'],
@@ -528,15 +501,15 @@
                 [''],
                 ['Способ оплаты', 'Заказов', 'Бутылок', 'Сумма (сум)', '% от общей'],
                 ['───────────────', '────────', '────────', '─────────────', '──────────'],
-                ['💵 Наличными', cashCount, cashBottles, formatSum(cashSum), totalSum > 0 ? ((cashSum/totalSum)*100).toFixed(1) + '%' : '0%'],
-                ['🎁 Бонус', bonusCount, bonusBottles, formatSum(bonusSum), totalSum > 0 ? ((bonusSum/totalSum)*100).toFixed(1) + '%' : '0%'],
-                ['🆓 Бесплатно', freeCount, freeBottles, formatSum(freeSum), totalSum > 0 ? ((freeSum/totalSum)*100).toFixed(1) + '%' : '0%'],
+                ['💵 Наличными', cashCount, cashBottles, fmt(cashSum), totalSum > 0 ? ((cashSum/totalSum)*100).toFixed(1) + '%' : '0%'],
+                ['🎁 Бонус', bonusCount, bonusBottles, fmt(bonusSum), totalSum > 0 ? ((bonusSum/totalSum)*100).toFixed(1) + '%' : '0%'],
+                ['🆓 Бесплатно', freeCount, freeBottles, fmt(freeSum), totalSum > 0 ? ((freeSum/totalSum)*100).toFixed(1) + '%' : '0%'],
                 ['───────────────', '────────', '────────', '─────────────', '──────────'],
-                ['✅ ИТОГО', parsedData.length, totalBottles, formatSum(totalSum), '100%'],
+                ['✅ ИТОГО', parsedData.length, totalBottles, fmt(totalSum), '100%'],
                 [''],
-                ['═══════════════════════════════════════════════════════════════'],
+                ['═══════════════════════════════════════════════════════════════════════════════'],
                 ['                      ДЕТАЛЬНЫЙ СПИСОК ЗАКАЗОВ'],
-                ['═══════════════════════════════════════════════════════════════'],
+                ['═══════════════════════════════════════════════════════════════════════════════'],
                 [''],
                 ['#', 'ID', 'Имя клиента', 'ИНН', 'Телефон', 'Дата', 'Адрес доставки', 'Товары', 'Оплата', 'Сумма', 'Статус']
             ];
@@ -545,16 +518,16 @@
                 const total = parseInt(row.total) || 0;
                 excelData.push([
                     index + 1, row.id, row.name, row.inn || '-', row.phone,
-                    row.date, row.address, row.products, row.payment, formatSum(total), row.status
+                    row.date, row.address, row.products, row.payment, fmt(total), row.status
                 ]);
             });
 
             excelData.push(['───', '────', '─────────────', '────', '──────────', '────', '───────────────', '────────', '────────', '──────────', '────────']);
-            excelData.push(['', '', '', '', '', '', '', 'ИТОГО:', totalBottles + ' бут.', formatSum(totalSum) + ' сум', '']);
+            excelData.push(['', '', '', '', '', '', '', 'ИТОГО:', totalBottles + ' бут.', fmt(totalSum) + ' сум', '']);
             excelData.push(['']);
-            excelData.push(['═══════════════════════════════════════════════════════════════']);
+            excelData.push(['═══════════════════════════════════════════════════════════════════════════════']);
             excelData.push(['                         Конец отчета']);
-            excelData.push(['═══════════════════════════════════════════════════════════════']);
+            excelData.push(['═══════════════════════════════════════════════════════════════════════════════']);
 
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet(excelData);
