@@ -331,23 +331,13 @@
             const dateStr = now.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
             const fmt = (n) => n.toLocaleString('ru-RU');
 
-            const summaryText = `📊 MONTELLA - ИТОГИ ДНЯ
-📅 ${dateStr}
+            const dateShort = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
 
-За сегодня выполнено ${data.length} заказов.
-Всего доставлено ${totalBottles} бутылок воды (18.9л).
-
-💵 НАЛИЧНЫМИ: ${cashCount} заказов (${cashBottles} бут.) — ${fmt(cashSum)} сум
-🎁 БОНУС: ${bonusCount} заказов (${bonusBottles} бут.) — ${fmt(bonusSum)} сум
-🆓 БЕСПЛАТНО: ${freeCount} заказов (${freeBottles} бут.) — ${fmt(freeSum)} сум
-
-📦 Доставлено: ${deliveredCount} заказов
-⏳ Ожидает: ${approvedCount} заказов
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-✅ ОБЩАЯ ВЫРУЧКА: ${fmt(totalSum)} сум
-💵 Наличными: ${fmt(cashSum)} сум (${totalSum > 0 ? ((cashSum/totalSum)*100).toFixed(1) : 0}%)
-━━━━━━━━━━━━━━━━━━━━━━━━`;
+            const summaryText = `${dateShort}
+заказ ${totalBottles} дона сув
+нахт ${cashBottles} дона сув
+бесплатно ${freeBottles} дона сув
+бонус ${bonusBottles} дона сув`;
 
             document.getElementById('summaryText').textContent = summaryText;
         }
