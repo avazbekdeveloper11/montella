@@ -167,7 +167,10 @@
                 <div class="summary-box" id="summaryBox">
                     <div class="summary-header">
                         <h4>📋 Краткий итог дня</h4>
-                        <button class="btn-copy" onclick="copySummary()">📋 Копировать</button>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="date" id="reportDate" onchange="updateSummaryDate()" style="padding: 8px; border-radius: 6px; border: none;">
+                            <button class="btn-copy" id="copyBtn">📋 Копировать</button>
+                        </div>
                     </div>
                     <pre id="summaryText"></pre>
                 </div>
@@ -331,9 +334,26 @@
             const dateStr = now.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
             const fmt = (n) => n.toLocaleString('ru-RU');
 
-            const dateShort = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
+            // Save stats for date change
+            summaryStats = { totalBottles, cashBottles, freeBottles, bonusBottles };
 
-            const summaryText = `${dateShort}
+            // Get date from first order or use today
+            let dateStr = '';
+            if (data.length > 0 && data[0].date) {
+                dateStr = data[0].date;
+                // Convert dd.mm.yy to yyyy-mm-dd for input
+                const parts = data[0].date.split('.');
+                if (parts.length === 3) {
+                    const fullYear = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+                    document.getElementById('reportDate').value = `${fullYear}-${parts[1]}-${parts[0]}`;
+                }
+            } else {
+                const now = new Date();
+                dateStr = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
+                document.getElementById('reportDate').valueAsDate = now;
+            }
+
+            const summaryText = `${dateStr}
 заказ ${totalBottles} дона сув
 нахт ${cashBottles} дона сув
 бесплатно ${freeBottles} дона сув
@@ -342,18 +362,46 @@
             document.getElementById('summaryText').textContent = summaryText;
         }
 
+        let summaryStats = {};
+
         function copySummary() {
             const text = document.getElementById('summaryText').textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = document.querySelector('.btn-copy');
-                btn.textContent = '✅ Скопировано!';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.textContent = '📋 Копировать';
-                    btn.classList.remove('copied');
-                }, 2000);
-            });
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            const btn = document.getElementById('copyBtn');
+            btn.textContent = '✅ Скопировано!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = '📋 Копировать';
+                btn.classList.remove('copied');
+            }, 2000);
         }
+
+        function updateSummaryDate() {
+            const dateInput = document.getElementById('reportDate').value;
+            if (!dateInput || !summaryStats.totalBottles) return;
+
+            const [year, month, day] = dateInput.split('-');
+            const dateStr = `${day}.${month}.${year}`;
+
+            const text = `${dateStr}
+заказ ${summaryStats.totalBottles} дона сув
+нахт ${summaryStats.cashBottles} дона сув
+бесплатно ${summaryStats.freeBottles} дона сув
+бонус ${summaryStats.bonusBottles} дона сув`;
+
+            document.getElementById('summaryText').textContent = text;
+        }
+
+        // Add click event for copy button
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('copyBtn').addEventListener('click', copySummary);
+        });
 
         function formatNumber(num) {
             return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
