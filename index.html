@@ -217,7 +217,7 @@
             const lines = text.split('\n').map(l => l.trim()).filter(l => l);
             const data = [];
 
-            // Skip header lines - find where "Статус" ends
+            // Skip header - find "Статус" line
             let startIdx = 0;
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i] === 'Статус') {
@@ -226,17 +226,25 @@
                 }
             }
 
-            // Find all row starts - row number followed by 4-digit ID
-            const rowStarts = [];
+            // Remove everything after "Итого:"
+            let endIdx = lines.length;
             for (let i = startIdx; i < lines.length; i++) {
-                // Row number: 1-999, next line is ID (4+ digits like 3912, 4053)
-                if (/^\d{1,3}$/.test(lines[i])) {
-                    // Check next line is a valid ID (4+ digit number)
-                    if (i + 1 < lines.length && /^\d{4,}$/.test(lines[i + 1])) {
-                        // Make sure it's not "Итого:" section
-                        if (!lines[i].startsWith('Итого') && !lines[i + 1].startsWith('Итого')) {
-                            rowStarts.push(i);
-                        }
+                if (lines[i].startsWith('Итого:') || lines[i] === 'Итого') {
+                    endIdx = i;
+                    break;
+                }
+            }
+
+            const dataLines = lines.slice(startIdx, endIdx);
+
+            // Find row starts: number 1-99 followed by ID 3000-9999
+            const rowStarts = [];
+            for (let i = 0; i < dataLines.length; i++) {
+                if (/^\d{1,2}$/.test(dataLines[i]) && i + 1 < dataLines.length) {
+                    const num = parseInt(dataLines[i]);
+                    const nextNum = parseInt(dataLines[i + 1]);
+                    if (num >= 1 && num <= 99 && nextNum >= 3000 && nextNum <= 9999) {
+                        rowStarts.push(i);
                     }
                 }
             }
@@ -244,12 +252,8 @@
             // Parse each row
             for (let r = 0; r < rowStarts.length; r++) {
                 const start = rowStarts[r];
-                const end = r + 1 < rowStarts.length ? rowStarts[r + 1] : lines.length;
-                let rowLines = lines.slice(start, end);
-
-                // Remove "Итого:" lines from the end
-                rowLines = rowLines.filter(l => !l.startsWith('Итого:') && l !== 'Итого');
-
+                const end = r + 1 < rowStarts.length ? rowStarts[r + 1] : dataLines.length;
+                const rowLines = dataLines.slice(start, end);
                 const row = parseRow(rowLines);
                 if (row) data.push(row);
             }
@@ -258,47 +262,57 @@
         }
 
         function parseRow(lines) {
-            if (lines.length < 6) return null;
+            if (lines.length < 8) return null;
 
-            let idx = 0;
-            const rowNum = lines[idx++];
-            const id = lines[idx++];
-            const name = lines[idx++];
+            const rowNum = lines[0];
+            const id = lines[1];
+            const name = lines[2];
 
-            // Find phone (998xxxxxxxxx format)
-            let inn = '';
-            let phone = '';
-
-            for (let i = idx; i < lines.length; i++) {
+            // Find phone index (998xxxxxxxxx - 12 digits starting with 998)
+            let phoneIdx = -1;
+            for (let i = 3; i < lines.length; i++) {
                 if (/^998\d{9}$/.test(lines[i])) {
-                    // Everything between name and phone could be INN
-                    if (i > idx) {
-                        inn = lines.slice(idx, i).join(' ');
-                    }
-                    phone = lines[i];
-                    idx = i + 1;
+                    phoneIdx = i;
                     break;
                 }
             }
+            if (phoneIdx === -1) return null;
 
-            if (!phone) return null;
+            // INN is between name and phone (could be empty, "0", or digits)
+            const inn = phoneIdx > 3 ? lines.slice(3, phoneIdx).join(' ') : '';
+            const phone = lines[phoneIdx];
 
-            // Date (format: dd.mm.yy)
-            let date = '';
-            if (idx < lines.length && /^\d{2}\.\d{2}\.\d{2}$/.test(lines[idx])) {
-                date = lines[idx++];
-            }
+            // Date is right after phone
+            const date = lines[phoneIdx + 1] || '';
 
-            // Find products line (contains "x Вода" or similar)
+            // Find products (N x Вода...)
             let productsIdx = -1;
-            for (let i = idx; i < lines.length; i++) {
-                if (/^\d+\s*x\s*/.test(lines[i])) {
+            for (let i = phoneIdx + 2; i < lines.length; i++) {
+                if (/^\d+\s*x\s*/i.test(lines[i])) {
                     productsIdx = i;
                     break;
                 }
             }
-
             if (productsIdx === -1) return null;
+
+            // Address is between date and products
+            const address = lines.slice(phoneIdx + 2, productsIdx).join(' ');
+            const products = lines[productsIdx];
+
+            // Payment, total, status are after products
+            let payment = '', total = '', status = '';
+            for (let i = productsIdx + 1; i < lines.length; i++) {
+                const line = lines[i];
+                if (line === 'Наличными' || line === 'Бонус' || line === 'Бесплатно') {
+                    payment = line;
+                } else if (line === 'Доставлен' || line === 'Одобрен') {
+                    status = line;
+                } else if (/^[\d\s]+$/.test(line)) {
+                    total = line.replace(/\s/g, '');
+                }
+            }
+
+            return { rowNum, id, name, inn, phone, date, address, products, payment, total, status };
 
             // Address is between date and products
             const address = lines.slice(idx, productsIdx).join(' ');
